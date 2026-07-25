@@ -1,0 +1,21 @@
+# Materialized type stubs — regenerate with `camas gen`
+/src/types_bits/*.pyi
+
+# Task runner cache
+/.camas/
+
+# Benchmark output
+/bench/results/
+
+.venv/
+__pycache__/
+*.py[cod]
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyrefly_cache/
+.zuban_cache/
+
+/bench/.work/
+*.tmp
