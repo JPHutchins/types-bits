@@ -63,6 +63,7 @@ def test_accepts_valid_widths(checker: Checker) -> None:
         pytest.skip(f"{checker.name} is not installed")
     outcome = run(checker, [ACCEPT], cwd=ROOT)
     assert outcome.errors == (), outcome.raw
+    assert outcome.returncode == 0, f"rc={outcome.returncode}\n{outcome.raw}"
 
 
 @pytest.mark.checker
@@ -72,12 +73,13 @@ def test_rejects_exactly_the_marked_blocks(checker: Checker) -> None:
         pytest.skip(f"{checker.name} is not installed")
     spans = blocks(REJECT)
     outcome = run(checker, [REJECT], cwd=ROOT)
-    diagnosed = describe(diagnosed_blocks(outcome.error_lines, spans))
+    diagnosed = describe(diagnosed_blocks(outcome.lines_in(REJECT), spans))
     expected = describe(marked_blocks(REJECT, spans))
     assert diagnosed == expected, (
         f"{checker.name} flagged blocks at {diagnosed}, expected {expected}\n"
-        f"error lines: {sorted(outcome.error_lines)}\nrc={outcome.returncode}\n{outcome.raw}"
+        f"error lines: {sorted(outcome.lines_in(REJECT))}\nrc={outcome.returncode}\n{outcome.raw}"
     )
+    assert outcome.returncode != 0, f"rc=0 but the fixture must be rejected\n{outcome.raw}"
 
 
 def test_every_checker_is_installed() -> None:

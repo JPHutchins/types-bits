@@ -5,14 +5,14 @@ from __future__ import annotations
 import json
 import os
 import re
-import shutil
 import subprocess
 import time
+from pathlib import Path
+from shutil import which
 from typing import TYPE_CHECKING, Final, Literal, NamedTuple
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
-    from pathlib import Path
 
 type DiagFormat = Literal["mypy-json", "pyright-json", "pyrefly-json", "concise"]
 
@@ -29,11 +29,10 @@ class Checker(NamedTuple):
     name: str
     argv: tuple[str, ...]
     fmt: DiagFormat
-    caches: tuple[str, ...] = ()
 
     @property
     def available(self) -> bool:
-        return shutil.which(self.argv[0]) is not None
+        return which(self.argv[0]) is not None
 
 
 CHECKERS: Final[tuple[Checker, ...]] = (
@@ -71,9 +70,10 @@ class Outcome(NamedTuple):
     def errors(self) -> tuple[Diagnostic, ...]:
         return tuple(diag for diag in self.diagnostics if diag.severity == "error")
 
-    @property
-    def error_lines(self) -> frozenset[int]:
-        return frozenset(diag.line for diag in self.errors)
+    def lines_in(self, path: Path) -> frozenset[int]:
+        """Only this file: a checker follows imports and reports on other modules too."""
+        target = path.resolve()
+        return frozenset(diag.line for diag in self.errors if (Path(diag.file).resolve() == target))
 
 
 def _from_mypy(stdout: str) -> Iterable[Diagnostic]:
@@ -137,14 +137,9 @@ def run(
     targets: Sequence[Path | str],
     *,
     cwd: Path,
-    cold: bool = True,
     timeout: float | None = None,
     extra: Sequence[str] = (),
 ) -> Outcome:
-    if cold:
-        for cache in checker.caches:
-            shutil.rmtree(cwd / cache, ignore_errors=True)
-
     start = time.perf_counter()
     try:
         proc = subprocess.run(  # noqa: S603

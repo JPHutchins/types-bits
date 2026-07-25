@@ -21,6 +21,7 @@ from types_bits._generate import (
     module,
     narrower,
     widths,
+    write,
 )
 from types_bits._spec import MAX_BITS
 
@@ -88,5 +89,8 @@ def test_generation_is_deterministic() -> None:
     assert module(MAX_BITS) == module(MAX_BITS)
 
 
-def test_materialized_stub_matches_the_generator() -> None:
-    assert STUB.read_text(encoding="utf-8") == module(MAX_BITS)
+def test_write_round_trips_through_the_atomic_rename(tmp_path: Path) -> None:
+    """`write` is the build hook's entry point and may race a concurrent install."""
+    written = write(tmp_path / "sub" / "out.pyi")
+    assert written.read_text(encoding="utf-8") == module(MAX_BITS)
+    assert not list(tmp_path.glob("**/*.tmp"))

@@ -35,7 +35,6 @@ class Sample(NamedTuple):
     checker: str
     variant: str
     bits: int
-    members: int
     seconds: float | None
     errors: int
 
@@ -103,7 +102,7 @@ def write_shape_probe(bits: int, shape: Shape, variant: Variant) -> Path:
 def shapes(checkers: Sequence[Checker], repeat: int) -> dict[str, tuple[Sample, ...]]:
     return {
         f"{variant} u{bits - 1} + u{bits} declared, varying uses": tuple(
-            measure(checker, write_shape_probe(bits, shape, variant), shape, bits, 2**bits, repeat)
+            measure(checker, write_shape_probe(bits, shape, variant), shape, bits, repeat)
             for shape in SHAPES
             for checker in checkers
         )
@@ -133,16 +132,13 @@ def write_probe(bits: int, variant: Variant) -> Path:
     return path
 
 
-def measure(
-    checker: Checker, target: Path, variant: str, bits: int, members: int, repeat: int
-) -> Sample:
-    outcomes = [run(checker, [target], cwd=ROOT, cold=True, timeout=TIMEOUT) for _ in range(repeat)]
+def measure(checker: Checker, target: Path, variant: str, bits: int, repeat: int) -> Sample:
+    outcomes = [run(checker, [target], cwd=ROOT, timeout=TIMEOUT) for _ in range(repeat)]
     timings = [outcome.seconds for outcome in outcomes if not outcome.timed_out]
     return Sample(
         checker.name,
         variant,
         bits,
-        members,
         min(timings) if timings else None,
         max(len(outcome.errors) for outcome in outcomes),
     )
@@ -152,7 +148,7 @@ def sweep(
     checkers: Sequence[Checker], bit_widths: Sequence[int], variants: Sequence[Variant], repeat: int
 ) -> tuple[Sample, ...]:
     return tuple(
-        measure(checker, write_probe(bits, variant), variant, bits, 2**bits, repeat)
+        measure(checker, write_probe(bits, variant), variant, bits, repeat)
         for variant in variants
         for bits in bit_widths
         for checker in checkers
@@ -160,17 +156,13 @@ def sweep(
 
 
 def library(checkers: Sequence[Checker], repeat: int) -> tuple[Sample, ...]:
-    return tuple(
-        measure(checker, FIXTURE, "library", MAX_BITS, 2 ** (MAX_BITS + 1) - 2, repeat)
-        for checker in checkers
-    )
+    return tuple(measure(checker, FIXTURE, "library", MAX_BITS, repeat) for checker in checkers)
 
 
 def table(samples: Sequence[Sample], checkers: Sequence[Checker]) -> str:
     names = [checker.name for checker in checkers]
-    by_bits = {sample.bits: sample.members for sample in samples}
     rows = (
-        f"| {bits} | {by_bits[bits]:,} | "
+        f"| {bits} | "
         + " | ".join(
             next(
                 (s.cell for s in samples if s.bits == bits and s.checker == name),
@@ -179,12 +171,12 @@ def table(samples: Sequence[Sample], checkers: Sequence[Checker]) -> str:
             for name in names
         )
         + " |"
-        for bits in sorted(by_bits)
+        for bits in sorted({sample.bits for sample in samples})
     )
     return "\n".join(
         (
-            f"| bits | members | {' | '.join(names)} |",
-            f"|---:|---:|{'---:|' * len(names)}",
+            f"| bits | {' | '.join(names)} |",
+            f"|---:|{'---:|' * len(names)}",
             *rows,
         )
     )

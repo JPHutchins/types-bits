@@ -26,33 +26,34 @@ type-checker wall clock, per check run.
 ## Check cost by width
 
 Seconds, cold, best of one, Python 3.14.1 / WSL2. Encoding `flat`
-(`type uN = Literal[0, ..., 2**N-1]`), declaring `u1..uN` and widening each into the next.
+(`type uN = Literal[0, ..., 2**N-1]`), declaring `u1..uN` (so a probe at N bits holds 2^(N+1)-2 literals) and widening each
+into the next.
 
-| bits | members | mypy | pyright | basedpyright | ty | pyrefly | zuban |
-|---:|---:|---:|---:|---:|---:|---:|---:|
-| 8 | 256 | 2.30 | 0.68 | 0.71 | 0.08 | 0.32 | 0.10 |
-| 10 | 1,024 | 1.98 | 0.75 | 0.83 | 0.09 | 0.38 | 0.12 |
-| 12 | 4,096 | 2.22 | 0.79 | 0.85 | 0.11 | 0.31 | 0.33 |
-| 14 | 16,384 | 3.10 | 0.59 | 0.64 | 0.17 | 0.27 | 3.23 |
-| 16 | 65,536 | 3.85 | 0.70 | 0.79 | 0.41 | 0.46 | 51.26 |
+| bits | mypy | pyright | basedpyright | ty | pyrefly | zuban |
+|---:|---:|---:|---:|---:|---:|---:|
+| 8 | 2.30 | 0.68 | 0.71 | 0.08 | 0.32 | 0.10 |
+| 10 | 1.98 | 0.75 | 0.83 | 0.09 | 0.38 | 0.12 |
+| 12 | 2.22 | 0.79 | 0.85 | 0.11 | 0.31 | 0.33 |
+| 14 | 3.10 | 0.59 | 0.64 | 0.17 | 0.27 | 3.23 |
+| 16 | 3.85 | 0.70 | 0.79 | 0.41 | 0.46 | 51.26 |
 
-Shipped library (`u1..u10` + `i1..i10`, 2,046 literals): mypy 2.05, basedpyright 1.43,
+Shipped library (`u1..u10` + `i1..i10`): mypy 2.05, basedpyright 1.43,
 pyright 1.13, pyrefly 0.24, zuban 0.08, ty 0.06 — matching the `type uN = int` control.
 
 ```mermaid
 xychart-beta
-    title "16 bits, 65,536 literals"
+    title "16 bits"
     x-axis [zuban, mypy, basedpyright, pyright, pyrefly, ty]
     y-axis "seconds" 0 --> 55
     bar [51.26, 3.85, 0.79, 0.70, 0.46, 0.41]
 ```
 
-zuban, same sweep — ~16x per 4x members past 4,096:
+zuban, same sweep — roughly 16x per extra 2 bits past 12:
 
 ```mermaid
 xychart-beta
-    title "zuban vs literal count"
-    x-axis "members" [256, 1024, 4096, 16384, 65536]
+    title "zuban vs width"
+    x-axis "bits" [8, 10, 12, 14, 16]
     y-axis "seconds" 0 --> 55
     line [0.10, 0.12, 0.33, 3.23, 51.26]
 ```
@@ -63,7 +64,7 @@ pyrefly, ty:
 ```mermaid
 xychart-beta
     title "mypy, pyright, basedpyright, pyrefly, ty"
-    x-axis "members" [256, 1024, 4096, 16384, 65536]
+    x-axis "bits" [8, 10, 12, 14, 16]
     y-axis "seconds" 0 --> 4
     line [2.30, 1.98, 2.22, 3.10, 3.85]
     line [0.68, 0.75, 0.79, 0.59, 0.70]
@@ -105,13 +106,13 @@ xychart-beta
 
 Cost tracks the *narrow* operand, not the wide one. Wide side fixed at `u16`, one widening:
 
-| narrow | members | zuban | mypy | ty |
-|---|---:|---:|---:|---:|
-| u1 | 2 | 0.18 | 2.54 | 0.20 |
-| u4 | 16 | 0.18 | 2.46 | 0.15 |
-| u8 | 256 | 0.16 | 2.67 | 0.21 |
-| u12 | 4,096 | 0.76 | 2.50 | 0.17 |
-| u15 | 32,768 | 35.21 | 2.80 | 0.18 |
+| narrow | zuban | mypy | ty |
+|---|---:|---:|---:|
+| u1 | 0.18 | 2.54 | 0.20 |
+| u4 | 0.18 | 2.46 | 0.15 |
+| u8 | 0.16 | 2.67 | 0.21 |
+| u12 | 0.76 | 2.50 | 0.17 |
+| u15 | 35.21 | 2.80 | 0.18 |
 
 Both operands must be large. At the 10-bit ceiling the worst case (`u9` → `u10`) is 0.09s.
 Annotating a boundary at one width, so callers assign literals rather than widen between
@@ -191,8 +192,8 @@ No PEP provides bounded integers.
   new type-system machinery; arithmetic is not closed. Landed on `Annotated` +
   `annotated-types` with runtime validation.
 
-`fixtures/reject.py` covers the arithmetic case: mypy widens `u4 + u4` to
-`Literal[0, ..., 30]` and rejects assignment back into `u4`.
+`fixtures/reject.py` covers the arithmetic case: every checker rejects `u4 + u4` where a
+`u4` is required. mypy widens the sum to `int`; ty and zuban widen it to `Literal[0, ..., 30]`.
 
 [pep484]: https://peps.python.org/pep-0484/
 [pep561]: https://peps.python.org/pep-0561/

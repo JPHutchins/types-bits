@@ -1,6 +1,7 @@
 """Render exhaustive ``Literal`` stubs for Rust-style sized integer types.
 
-Not imported at runtime by :mod:`types_bits`. See ``python -m types_bits --help``.
+Imported lazily by the runtime tier for the width algebra; never eagerly.
+See ``python -m types_bits --help``.
 """
 
 from __future__ import annotations
@@ -20,9 +21,12 @@ class Unsigned(NamedTuple):
 
     >>> Unsigned(8).name, Unsigned(8).lo, Unsigned(8).hi
     ('u8', 0, 255)
+    >>> Unsigned(4) == Signed(4)
+    False
     """
 
     bits: int
+    signed: Literal[False] = False
 
     @property
     def name(self) -> str:
@@ -47,6 +51,7 @@ class Signed(NamedTuple):
     """
 
     bits: int
+    signed: Literal[True] = True
 
     @property
     def name(self) -> str:
@@ -85,7 +90,7 @@ def narrower(width: Width) -> Width | None:
     """Step down one bit, keeping the signedness; ``None`` at the floor.
 
     >>> narrower(Unsigned(3)), narrower(Unsigned(1))
-    (Unsigned(bits=2), None)
+    (Unsigned(bits=2, signed=False), None)
     """
     if width.bits == 1:
         return None
