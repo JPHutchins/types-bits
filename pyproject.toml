@@ -49,9 +49,6 @@ checkers = [
 "zuban>=0.9",
 ]
 
-[tool.uv.sources]
-camas = { git = "https://github.com/JPHutchins/camas", rev = "main" }
-
 [tool.ruff]
 line-length = 100
 src = ["src", "."]
