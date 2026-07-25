@@ -43,6 +43,7 @@ jobs:
         task: ${{ fromJSON(needs.discover.outputs.tasks).task }}
         python: ${{ fromJSON(needs.discover.outputs.axes).PY }}
     runs-on: ${{ matrix.os }}
+    name: ${{ matrix.task }} · py${{ matrix.python }} · ${{ matrix.os }}
     env:
       UV_PYTHON: ${{ matrix.python }}
     steps:
@@ -54,6 +55,7 @@ jobs:
         with:
           enable-cache: false
       - run: uv run camas "$TASK"
+        shell: bash
         env:
           TASK: ${{ matrix.task }}
 
