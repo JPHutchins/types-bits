@@ -9,12 +9,12 @@ import subprocess
 import time
 from pathlib import Path
 from shutil import which
-from typing import TYPE_CHECKING, Final, Literal, NamedTuple
+from typing import TYPE_CHECKING, Final, Literal, NamedTuple, TypeAlias
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
-type DiagFormat = Literal["mypy-json", "pyright-json", "pyrefly-json", "concise"]
+DiagFormat: TypeAlias = Literal["mypy-json", "pyright-json", "pyrefly-json", "concise"]
 
 
 class Diagnostic(NamedTuple):

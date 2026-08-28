@@ -26,78 +26,78 @@ type-checker wall clock, per check run.
 ## Check cost by width
 
 Seconds, cold, best of one, Python 3.14.1 / WSL2. Encoding `flat`
-(`type uN = Literal[0, ..., 2**N-1]`), declaring `u1..uN` (so a probe at N bits holds 2^(N+1)-2 literals) and widening each
+(`uN: TypeAlias = Literal[0, ..., 2**N-1]`), declaring `u1..uN` (so a probe at N bits holds 2^(N+1)-2 literals) and widening each
 into the next.
 
 | bits | mypy | pyright | basedpyright | ty | pyrefly | zuban |
 |---:|---:|---:|---:|---:|---:|---:|
-| 8 | 2.30 | 0.68 | 0.71 | 0.08 | 0.32 | 0.10 |
-| 10 | 1.98 | 0.75 | 0.83 | 0.09 | 0.38 | 0.12 |
-| 12 | 2.22 | 0.79 | 0.85 | 0.11 | 0.31 | 0.33 |
-| 14 | 3.10 | 0.59 | 0.64 | 0.17 | 0.27 | 3.23 |
-| 16 | 3.85 | 0.70 | 0.79 | 0.41 | 0.46 | 51.26 |
+| 8 | 1.54 | 0.60 | 0.72 | 0.07 | 0.27 | 0.10 |
+| 10 | 1.53 | 0.62 | 0.65 | 0.07 | 0.26 | 0.11 |
+| 12 | 1.58 | 0.59 | 0.70 | 0.11 | 0.32 | 0.28 |
+| 14 | 1.63 | 0.54 | 0.63 | 0.20 | 0.26 | 3.25 |
+| 16 | 2.58 | 0.55 | 0.60 | 0.34 | 0.39 | 48.73 |
 
-Shipped library (`u1..u10` + `i1..i10`): mypy 2.05, basedpyright 1.43,
-pyright 1.13, pyrefly 0.24, zuban 0.08, ty 0.06 — matching the `type uN = int` control.
+Shipped library (`u1..u10` + `i1..i10`): mypy 1.51, basedpyright 1.28,
+pyright 1.08, pyrefly 0.23, zuban 0.08, ty 0.06 — matching the `uN: TypeAlias = int` control.
 
 ```mermaid
 xychart-beta
     title "16 bits"
     x-axis [zuban, mypy, basedpyright, pyright, pyrefly, ty]
     y-axis "seconds" 0 --> 55
-    bar [51.26, 3.85, 0.79, 0.70, 0.46, 0.41]
+    bar [48.73, 2.58, 0.60, 0.55, 0.39, 0.34]
 ```
 
-zuban, same sweep — roughly 16x per extra 2 bits past 12:
+zuban, same sweep — 12x then 15x per extra 2 bits past 12:
 
 ```mermaid
 xychart-beta
     title "zuban vs width"
     x-axis "bits" [8, 10, 12, 14, 16]
     y-axis "seconds" 0 --> 55
-    line [0.10, 0.12, 0.33, 3.23, 51.26]
+    line [0.10, 0.11, 0.28, 3.25, 48.73]
 ```
 
-The other five, 0–4s axis. Rising line is mypy; flat cluster is pyright, basedpyright,
+The other five, 0–3s axis. Rising line is mypy; flat cluster is pyright, basedpyright,
 pyrefly, ty:
 
 ```mermaid
 xychart-beta
     title "mypy, pyright, basedpyright, pyrefly, ty"
     x-axis "bits" [8, 10, 12, 14, 16]
-    y-axis "seconds" 0 --> 4
-    line [2.30, 1.98, 2.22, 3.10, 3.85]
-    line [0.68, 0.75, 0.79, 0.59, 0.70]
-    line [0.71, 0.83, 0.85, 0.64, 0.79]
-    line [0.32, 0.38, 0.31, 0.27, 0.46]
-    line [0.08, 0.09, 0.11, 0.17, 0.41]
+    y-axis "seconds" 0 --> 3
+    line [1.54, 1.53, 1.58, 1.63, 2.58]
+    line [0.60, 0.62, 0.59, 0.54, 0.55]
+    line [0.72, 0.65, 0.70, 0.63, 0.60]
+    line [0.27, 0.26, 0.32, 0.26, 0.39]
+    line [0.07, 0.07, 0.11, 0.20, 0.34]
 ```
 
 ## Fixed vs marginal cost
 
 `u(N-1)` and `u(N)` declared in every row; only the use count varies. Italic rows are the
-`type uN = int` control.
+`uN: TypeAlias = int` control.
 
 10 bits — indistinguishable from `int`:
 
 | uses | mypy | pyright | basedpyright | ty | pyrefly | zuban |
 |---|---:|---:|---:|---:|---:|---:|
-| declared, unused | 1.64 | 0.55 | 0.60 | 0.05 | 0.23 | 0.10 |
-| *control* | *1.64* | *0.60* | *0.59* | *0.06* | *0.23* | *0.08* |
-| 1 widening | 1.50 | 0.56 | 0.64 | 0.06 | 0.26 | 0.09 |
-| 10 widenings | 1.75 | 0.65 | 0.90 | 0.08 | 0.29 | 0.20 |
+| declared, unused | 1.23 | 0.48 | 0.64 | 0.03 | 0.22 | 0.07 |
+| *control* | *1.39* | *0.48* | *0.65* | *0.06* | *0.22* | *0.08* |
+| 1 widening | 1.24 | 0.51 | 0.60 | 0.05 | 0.22 | 0.10 |
+| 10 widenings | 1.20 | 0.53 | 0.59 | 0.07 | 0.25 | 0.16 |
 
 16 bits — 98,304 literals:
 
 | uses | mypy | pyright | basedpyright | ty | pyrefly | zuban |
 |---|---:|---:|---:|---:|---:|---:|
-| declared, unused | 2.79 | 0.66 | 0.64 | 0.18 | 0.29 | 0.20 |
-| *control* | *1.57* | *0.62* | *0.59* | *0.05* | *0.28* | *0.08* |
-| 1 assignment | 2.77 | 0.62 | 0.65 | 0.19 | 0.33 | 0.21 |
-| 1 widening | 2.81 | 0.64 | 0.65 | 0.22 | 0.37 | **35.66** |
-| 10 widenings | 3.31 | 0.56 | 0.58 | 0.20 | 0.31 | **timeout (>180s)** |
+| declared, unused | 2.01 | 0.53 | 0.57 | 0.22 | 0.29 | 0.20 |
+| *control* | *1.19* | *0.47* | *0.55* | *0.05* | *0.21* | *0.08* |
+| 1 assignment | 1.96 | 0.56 | 0.61 | 0.21 | 0.33 | 0.21 |
+| 1 widening | 1.94 | 0.52 | 0.60 | 0.21 | 0.28 | **34.90** |
+| 10 widenings | 2.19 | 0.56 | 0.65 | 0.26 | 0.29 | **timeout (>180s)** |
 
-- Declaration: fixed per check run, ~linear in literals (~12 µs/literal on mypy). Not per
+- Declaration: fixed per check run, ~linear in literals (~8 µs/literal on mypy). Not per
   importing file, not per use.
 - Assignment: free. Enumerated membership is a hash lookup.
 - Widening: free except zuban at width.
@@ -114,7 +114,9 @@ Cost tracks the *narrow* operand, not the wide one. Wide side fixed at `u16`, on
 | u12 | 0.76 | 2.50 | 0.17 |
 | u15 | 35.21 | 2.80 | 0.18 |
 
-Both operands must be large. At the 10-bit ceiling the worst case (`u9` → `u10`) is 0.09s.
+*Measured under the PEP 695 spelling; no task reproduces this sweep.*
+
+Both operands must be large. At the 10-bit ceiling the worst case (`u9` → `u10`) is 0.10s.
 Annotating a boundary at one width, so callers assign literals rather than widen between
 adjacent wide aliases, avoids the shape entirely.
 
@@ -127,6 +129,9 @@ adjacent wide aliases, avoids the shape entirely.
 | `union` | `u9 \| Literal[512, ...]` | ty 44.24s at 14 bits vs 0.17s flat |
 | `annotated` | `Annotated[Literal[...], Ge, Le]` | tracks `flat` within noise to 14 bits |
 | `opaque` | `int` | control |
+
+*Measured under the PEP 695 spelling, before the [PEP 613][pep613] switch; `camas bench_full`
+regenerates.*
 
 ```mermaid
 xychart-beta
@@ -179,7 +184,8 @@ No PEP provides bounded integers.
 |---|---|---|
 | [586 – Literal Types][pep586] | Final | The mechanism. Calls `Literal` insufficient for numpy-style numeric code and defers integer generics. Permits the `nested` form pyrefly rejects. |
 | [593 – `Annotated`][pep593] | Final | Metadata channel for the runtime tier. |
-| [695 – Type Parameter Syntax][pep695] | Final | `type uN = ...` in the stub. |
+| [613 – Explicit Type Aliases][pep613] | Final | `uN: TypeAlias = ...` in the stub; why the floor is 3.10. |
+| [695 – Type Parameter Syntax][pep695] | Final | `type uN = ...` reads better, but mypy rejects a `type` statement under `--python-version 3.11` — fatally, `errors prevented further checking` — so it would pin the floor at 3.12. The other five accept it at a 3.10 target. |
 | [561 – Packaging Type Information][pep561] | Final | `py.typed`; why the stub ships in the wheel. |
 | [562 – Module `__getattr__`][pep562] | Final | One name, two tiers. |
 | [649][pep649] / [749][pep749] – Deferred Annotations | Final (3.14) | Guarded import gets cheaper. |
@@ -200,6 +206,7 @@ No PEP provides bounded integers.
 [pep562]: https://peps.python.org/pep-0562/
 [pep586]: https://peps.python.org/pep-0586/
 [pep593]: https://peps.python.org/pep-0593/
+[pep613]: https://peps.python.org/pep-0613/
 [pep649]: https://peps.python.org/pep-0649/
 [pep695]: https://peps.python.org/pep-0695/
 [pep746]: https://peps.python.org/pep-0746/
