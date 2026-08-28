@@ -31,9 +31,11 @@ ALL_WIDTHS = widths(MAX_BITS)
 
 
 def literal_members(source: str, name: str) -> tuple[int, ...]:
-    """Read a ``type NAME = Literal[...]`` alias back out of generated source."""
+    """Read a ``NAME: TypeAlias = Literal[...]`` alias back out of generated source."""
     for node in ast.parse(source).body:
-        if not isinstance(node, ast.TypeAlias) or node.name.id != name:
+        if not isinstance(node, ast.AnnAssign) or not isinstance(node.target, ast.Name):
+            continue
+        if node.target.id != name:
             continue
         subscript = node.value
         assert isinstance(subscript, ast.Subscript)
@@ -43,7 +45,11 @@ def literal_members(source: str, name: str) -> tuple[int, ...]:
 
 
 def alias_names(source: str) -> tuple[str, ...]:
-    return tuple(node.name.id for node in ast.parse(source).body if isinstance(node, ast.TypeAlias))
+    return tuple(
+        node.target.id
+        for node in ast.parse(source).body
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name)
+    )
 
 
 @pytest.mark.parametrize("width", ALL_WIDTHS, ids=lambda width: width.name)
@@ -81,8 +87,12 @@ def test_flat_variant_enumerates_the_whole_range(width: Width) -> None:
 
 
 def test_nested_and_union_variants_reference_the_narrower_alias() -> None:
-    assert alias(Unsigned(4), "nested") == "type u4 = Literal[u3, 8, 9, 10, 11, 12, 13, 14, 15]"
-    assert alias(Unsigned(4), "union") == "type u4 = u3 | Literal[8, 9, 10, 11, 12, 13, 14, 15]"
+    assert (
+        alias(Unsigned(4), "nested") == "u4: TypeAlias = Literal[u3, 8, 9, 10, 11, 12, 13, 14, 15]"
+    )
+    assert (
+        alias(Unsigned(4), "union") == "u4: TypeAlias = u3 | Literal[8, 9, 10, 11, 12, 13, 14, 15]"
+    )
 
 
 def test_generation_is_deterministic() -> None:

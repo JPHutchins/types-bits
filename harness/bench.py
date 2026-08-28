@@ -8,10 +8,10 @@ import platform
 import sys
 from itertools import pairwise
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, Literal, NamedTuple
+from typing import TYPE_CHECKING, Final, Literal, NamedTuple, TypeAlias
 
 from harness.checkers import CHECKERS, run, version
-from types_bits._generate import VARIANTS, Unsigned, alias, module, widths
+from types_bits._generate import VARIANTS, Unsigned, alias, imports, module, widths
 from types_bits._spec import MAX_BITS
 
 if TYPE_CHECKING:
@@ -55,7 +55,7 @@ def probe(bits: int, variant: Variant) -> str:
     return f"{module(bits, variant, 'u')}\n{pins}\n\n{widens}\n"
 
 
-type Shape = Literal["declare", "assign1", "assign10", "widen1", "widen10"]
+Shape: TypeAlias = Literal["declare", "assign1", "assign10", "widen1", "widen10"]
 SHAPES: Final[tuple[Shape, ...]] = ("declare", "assign1", "assign10", "widen1", "widen10")
 SHAPE_BITS: Final = (10, 16)
 SHAPE_VARIANTS: Final[tuple[Variant, ...]] = ("flat", "opaque")
@@ -68,8 +68,8 @@ def shape_probe(bits: int, shape: Shape, variant: Variant) -> str:
     and nothing else.
     """
     narrow, wide = Unsigned(bits - 1), Unsigned(bits)
-    imports = "from typing import Literal\n" if variant == "flat" else ""
-    decls = f"{imports}\n{alias(narrow, variant)}\n{alias(wide, variant)}\n"
+    preamble = "".join(f"{line}\n" for line in imports(variant))
+    decls = f"{preamble}\n{alias(narrow, variant)}\n{alias(wide, variant)}\n"
 
     def assigns(count: int) -> str:
         return "\n".join(f"a{i}: {wide.name} = {i}" for i in range(count))
